@@ -1,0 +1,14 @@
+example.tar.gz
+.idea/
+build/
+dist/
+example/.jobs.db
+example/.jobs/IndexGenome
+example/.jobs/MapReads
+example/.jobs/SortBAM
+example/.scripts/IndexGenome
+example/.scripts/MapReads
+example/.scripts/SortBAM
+example/.scripts/UnZipGenome
+*.pyc
+src/gwf.egg-info/
