@@ -4,10 +4,10 @@
     <title>GWF - Grid WorkFlow</title>
     <description>A small utility for specifying and running computation workflows on computer clusters.
 </description>
-    <link>http://mailund.github.io/gwf//</link>
-    <atom:link href="http://mailund.github.io/gwf//feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Tue, 19 Aug 2014 21:15:10 +0200</pubDate>
-    <lastBuildDate>Tue, 19 Aug 2014 21:15:10 +0200</lastBuildDate>
+    <link>http://mailund.github.iogwf/</link>
+    <atom:link href="http://mailund.github.iogwf/feed.xml" rel="self" type="application/rss+xml" />
+    <pubDate>Tue, 19 Aug 2014 21:20:48 +0200</pubDate>
+    <lastBuildDate>Tue, 19 Aug 2014 21:20:48 +0200</lastBuildDate>
     <generator>Jekyll v2.3.0</generator>
     
       <item>
@@ -15,8 +15,8 @@
         <description>&lt;p&gt;We have just built a new home page for GWF using Jekyll and github’s pages.&lt;/p&gt;
 </description>
         <pubDate>Tue, 19 Aug 2014 22:28:00 +0200</pubDate>
-        <link>http://mailund.github.io/gwf//gwf/update/2014/08/19/welcome-to-gwf.html</link>
-        <guid isPermaLink="true">http://mailund.github.io/gwf//gwf/update/2014/08/19/welcome-to-gwf.html</guid>
+        <link>http://mailund.github.iogwf/gwf/update/2014/08/19/welcome-to-gwf.html</link>
+        <guid isPermaLink="true">http://mailund.github.iogwf/gwf/update/2014/08/19/welcome-to-gwf.html</guid>
         
         
         <category>gwf</category>
