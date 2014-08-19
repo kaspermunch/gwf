@@ -3,7 +3,7 @@ title: GWF - Grid WorkFlow
 email: mailund@birc.au.dk
 description: > # this means to ignore newlines until "baseurl:"
   A small utility for specifying and running computation workflows on computer clusters.
-baseurl: "" # the subpath of your site, e.g. /blog/
+baseurl: "gwf" # the subpath of your site, e.g. /blog/
 url: "http://mailund.github.io/gwf" # the base hostname & protocol for your site
 twitter_username: ThomasMailund
 github_username:  mailund
