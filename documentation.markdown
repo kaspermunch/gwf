@@ -119,15 +119,95 @@ files = glob("*")
 the_same_files = shell("ls")
 {% endhighlight %}
 
-[glob]: http://en.wikipedia.org/wiki/Glob_(programming)
-
 
 
 Templates
 =========
 
+Building every target as in the examples above only works when there are a few targets and when the targets are known at the time the workflow is written. Very often there is a large number of targets and often the exact number of targets depend on the data to be analysed.
+
+When this is the case, we can use more Python programming to create the targets.
+
+If, for example, we have several pairs of FASTQ files and want to map them to a set of BAM files, we can iterate over them and build targets for each BAM file.
+
+{% highlight python %}
+from gwf import *
+
+R1files = ['Masala_1_R1.fastq.gz', 'Masala_2_R1.fastq.gz']
+R2files = ['Masala_1_R2.fastq.gz', 'Masala_2_R2.fastq.gz']
+
+for i, (r1, r2) in enumerate(zip(R1files)):
+  target('MapRead_{}'.format(i+1),
+         input=['ponAbe2.fa', 'ponAbe2.amb', 'ponAbe2.ann', 'ponAbe2.pac',
+                r1, r2],
+         output='Masala_{}.sorted.rmdup.bam'.format(i+1),
+         cores=16) << '''
+
+  bwa mem -t 16 ponAbe2.fa {r1} {r2} | \
+      samtools view -Shb - > /scratch/$GWF_JOBID/unsorted.bam
+
+  samtools sort -o /scratch/$GWF_JOBID/unsorted.bam /scratch/$GWF_JOBID/sort | \
+      samtools rmdup -s - Masala_{number}.sorted.rmdup.bam
+  '''.format(r1=r1, r2=r2, number=i+1)
+{% endhighlight %}
+
+This looks a lot more complicated -- and using templates as described below it can be much simplified -- but we can break it down a bit to see what is going on.
+
+First, we see the paired-end FASTQ files in two different lists.
+
+When there are many such files, we can build the lists using functions like `glob` or collect them some other way, but here they are just shown explicitly for the example.
+
+Using the Python function `zip` we match them up as pairs and combined with `enumerate` we get each pair together with a number. Here it will be 0 and 1 since those are the numbers `enumerate` will give. So the line
+
+{% highlight python %}
+for i, (r1, r2) in enumerate(zip(R1files)):
+{% endhighlight %}
+
+will loop over the pairs and give each a number.
+
+The number is assigned to the variable `i` and the two FASTQ files are assigned to the variables `r1` and `r2`.
+
+The number is used to make a unique target name for each pair using the [format][format] string method.
+
+{% highlight python %}
+  target('MapRead_{}'.format(i+1),
+{% endhighlight %}
+
+We are adding one to make the targets numbered from 1 rather than zero. We didn't have to, but it matches the way we have numbered the input files better.
+
+The two FASTQ files in the pair are used in the list of input files
+
+{% highlight python %}
+input=['ponAbe2.fa', 'ponAbe2.amb', 'ponAbe2.ann', 'ponAbe2.pac', r1, r2],
+{% endhighlight %}
+
+and the number again to specify the output file
+
+{% highlight python %}
+output='Masala_{}.sorted.rmdup.bam'.format(i+1),
+{% endhighlight %}
+
+and all three variables are used when specifying the shell commands for the target, again using [format][format].
+
+{% highlight python %}
+.format(r1=r1, r2=r2, number=i+1)
+{% endhighlight %}
+
+In this case with named parameters to make the subsitutions more explicit.
 
 
+
+
+
+Templates
+---------
+
+**FIXME**
+
+Using functions to make templates
+---------------------------------
+
+**FIXME**
 
 Example read-mapping workflow
 -----------------------------
@@ -147,3 +227,8 @@ target('MapReads')    << bwa_map(refGenome='ponAbe2',
                                  bamfile='Masala.unsorted.bam')
 target('SortBAM')     << samtools_sort(name='Masala')
 {% endhighlight %}
+
+
+
+[glob]: http://en.wikipedia.org/wiki/Glob_(programming)
+[format]: https://docs.python.org/2/library/string.html#format-string-syntax
