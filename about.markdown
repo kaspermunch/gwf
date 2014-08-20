@@ -23,7 +23,7 @@ Contributing
 To contribute you should:
 
 1. Fork the repository.
-2. Make a new branch in your fork and name it feature/DESCRIPTIVE_NAME.
+2. Make a new branch in your fork and name it `feature/DESCRIPTIVE_NAME`.
 3. Implement your new feature.
 4. Test it.
 5. Open a pull request to the main repository.

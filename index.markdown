@@ -4,6 +4,7 @@ layout: default
 
 GWF (Grid WorkFlow) is a small utility for specifying and running workflows on a computer grid. Workflows are specified in Python, with some special functions to specify tasks to run, and GWF then keeps track of taskts that needs to be done in a make-like fashion and schedules jobs when they need to be run.
 
+To download GWF use one of the links at the bottom of the page.
 
 
 News

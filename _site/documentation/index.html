@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <title>Documentation</title>
+    <meta name="description" content="A small utility for specifying and running computation workflows on computer clusters.
+">
+
+    <link rel="stylesheet" href="/gwf//css/main.css">
+    <link rel="canonical" href="http://mailund.github.io/gwf//documentation/">
+</head>
+
+
+  <body>
+
+    <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/gwf//">GWF - Grid WorkFlow</a>
+
+    <nav class="site-nav">
+      <a href="#" class="menu-icon">
+        <svg viewBox="0 0 18 15">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </a>
+
+      <div class="trigger">
+        
+          
+          <a class="page-link" href="/gwf//about/">About</a>
+          
+        
+          
+          <a class="page-link" href="/gwf//documentation/">Documentation</a>
+          
+        
+          
+        
+          
+        
+          
+        
+      </div>
+    </nav>
+
+
+  </div>
+
+</header>
+
+
+
+    <div class="page-content">
+
+      <div class="wrapper">
+        <div class="post">
+
+  <header class="post-header">
+    <h1 class="post-title">Documentation</h1>
+  </header>
+
+  <article class="post-content">
+    <p>Using GWF involves specifying a workflow in one or more files and using the <code>gwf</code> script to submit jobs in the workflow to the computer cluser.</p>
+
+<p>Workflows are specified in Python using a special function, <code>target()</code>, that specifies a job to be run. Targets depend on zero or more input files and produce zero or more output files. If any input file is younger than any output file then the target is assumed to be out of date and <code>gwf</code> will recognize this.</p>
+
+<p>When you run <code>gwf</code> in a directory with a workflow specified in a file named <code>workflow.py</code> it will figure out which targets needs to be run and schedule them on the cluster. If there are dependencies between the jobs it will schedule them in such a way that a target is only run after all the targets that it depends on have run. If a target is already submitted to the cluster when you run <code>gwf</code> it will not be submitted again, but any other job that depends on it will be set to wait for its completion before it can run.</p>
+
+<p>At any time, you can use <code>gwf --status</code> to see the status of your workflow. This will show how many targets are up to date, how many are currently running or queued on the cluster, and how many targets still needs to be submitted.</p>
+
+<p>By default, <code>gwf --status</code> will only show the status of terminal targets, i.e. targets that no other target depends on. To see other targets, simply run <code>gwf --status TARGET_NAME</code>.</p>
+
+<p>Run <code>gwf --help</code> to get a list of options for <code>gwf</code>.</p>
+
+<p>For ways of configuring GWF run <code>gwf-config --help</code>.</p>
+
+<h1 id="specifying-workflows">Specifying workflows</h1>
+
+<p>Workflows are specified in Python. Having a full blown programming language to specify workflows makes GWF very powerful, but simple workflows can still be specified with very simple syntax.</p>
+
+<p>Below is a very simple workflow with a single target that just unzips a file.</p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">from</span> <span class="nn">gwf</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">target</span><span class="p">(</span><span class="s">&#39;UnZipGenome&#39;</span><span class="p">,</span> <span class="nb">input</span><span class="o">=</span><span class="s">&#39;ponAbe2.fa.gz&#39;</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="s">&#39;ponAbe2.fa&#39;</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="s">&#39;&#39;&#39;</span>
+<span class="s">gzcat ponAbe2.fa.gz &gt; ponAbe2.fa</span>
+<span class="s">&#39;&#39;&#39;</span></code></pre></div>
+
+<p>The first line is necessary to import the <code>target()</code> function. </p>
+
+<p>The call to the <code>target()</code> function takes three parameters. The first is always the name of the target – which should be unique for the workflow – and any other parameters should be named parameters. These parameters will specify the input and output files for the target and any options that should be passed on to the cluster such as the necessary resources for executing the target.</p>
+
+<p>In the example above, only the input and output files are specified. There is one input file, <code>ponAbe2.fa.gz</code>, and one output file <code>ponAbe2.fa</code>. When more input or output files are needed these are simply specified as a Python list.</p>
+
+<p>The actual execution for the target is specified outside the call to the function, in the string that follows the <code>&lt;&lt;</code> operator. The string that follows the operator should contain the shell commands that the target should execute. In the example there is a single command that uses <code>gzcat</code> to unzip a FASTA file.</p>
+
+<p>To string together a number of tasks, a workflow simply needs to specify more than one target. The dependencies between targets are then determined by the input and output files. For a slightly more complex example, see below:</p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">from</span> <span class="nn">gwf</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">target</span><span class="p">(</span><span class="s">&#39;UnZipGenome&#39;</span><span class="p">,</span> <span class="nb">input</span><span class="o">=</span><span class="s">&#39;ponAbe2.fa.gz&#39;</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="s">&#39;ponAbe2.fa&#39;</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="s">&#39;&#39;&#39;</span>
+<span class="s">gzcat ponAbe2.fa.gz &gt; ponAbe2.fa</span>
+<span class="s">&#39;&#39;&#39;</span>
+
+<span class="n">target</span><span class="p">(</span><span class="s">&#39;IndexGenome&#39;</span><span class="p">,</span> <span class="nb">input</span><span class="o">=</span><span class="s">&#39;ponAbe2.fa&#39;</span><span class="p">,</span>
+       <span class="n">output</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;ponAbe2.amb&#39;</span><span class="p">,</span> <span class="s">&#39;ponAbe2.ann&#39;</span><span class="p">,</span> <span class="s">&#39;ponAbe2.pac&#39;</span><span class="p">])</span> <span class="o">&lt;&lt;</span> <span class="s">&#39;&#39;&#39;</span>
+<span class="s">bwa index -p ponAbe2 -a bwtsw ponAbe2.fa</span>
+<span class="s">&#39;&#39;&#39;</span>
+
+<span class="n">target</span><span class="p">(</span><span class="s">&#39;MapReads&#39;</span><span class="p">,</span> <span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;ponAbe2.fa&#39;</span><span class="p">,</span> 
+                          <span class="s">&#39;ponAbe2.amb&#39;</span><span class="p">,</span> <span class="s">&#39;ponAbe2.ann&#39;</span><span class="p">,</span> <span class="s">&#39;ponAbe2.pac&#39;</span><span class="p">,</span>
+                          <span class="s">&#39;Masala_R1.fastq.gz&#39;</span><span class="p">,</span> <span class="s">&#39;Masala_R2.fastq.gz&#39;</span><span class="p">],</span>
+       <span class="n">output</span><span class="o">=</span><span class="s">&#39;Masala.sorted.rmdup.bam&#39;</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="s">&#39;&#39;&#39;</span>
+
+<span class="s">bwa mem -t 16 ponAbe2.fa Masala_R1.fastq.gz Masala_R2.fastq.gz | </span><span class="se">\</span>
+<span class="s">    samtools view -Shb - &gt; /scratch/$GWF_JOBID/unsorted.bam</span>
+
+<span class="s">samtools sort -o /scratch/$GWF_JOBID/unsorted.bam /scratch/$GWF_JOBID/sort | </span><span class="se">\</span>
+<span class="s">    samtools rmdup -s - Masala.sorted.rmdup.bam</span>
+<span class="s">&#39;&#39;&#39;</span></code></pre></div>
+
+<p>This workflow has three targets: <code>UnZipGenome</code>, <code>IndexGenome</code>, and <code>MapReads</code>. The output file from <code>UnZipGenome</code>, <code>ponAbe2.fa</code>, is used as the input for <code>IndexGenome</code> that in turn produces three index files as output, <code>ponAbe2.amb</code>, <code>ponAbe2.ann</code>, and <code>ponAbe2.pac</code>. Both the FASTA file and the three index files are input files to the <code>MapReads</code> target in addition to two FASTQ files. The <code>MapReads</code> target executes two shell commands – any number is allows in a target specification – to produce the final output.</p>
+
+<p>In this workflow, <code>UnZipGenome</code> and <code>IndexGenome</code> both have other targets depending on them, so <code>MapReads</code> is the only terminal target and <code>gwf --status</code> would only show the progress in computing the final output file.</p>
+
+<h2 id="target-options">Target options</h2>
+
+<p>Additional named options to the <code>target()</code> function can be used to set the resources needed to run the target.</p>
+
+<p>Four options are currently recognized:</p>
+
+<ul>
+  <li><code>nodes</code> – The number of computer nodes needed for the target. The default is 1.</li>
+  <li><code>cores</code> – The number of cores (per node). The default is 1.</li>
+  <li><code>memory</code> – The necessary RAM. This can be specified either in bytes as an integer or as a string in the usual format like “2g” for 2 gigabytes. The default is “4g”.</li>
+  <li><code>walltime</code> – The time needed to finish the job. Specified as a string in the “hh:mm:ss” format. The default is “120:00:00”.</li>
+</ul>
+
+<p>In the example above, the <code>MapReads</code> target asks <code>bwa</code> to use 16 threads for read-mapping so this target should ask for 16 cores:</p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">target</span><span class="p">(</span><span class="s">&#39;MapReads&#39;</span><span class="p">,</span> <span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;ponAbe2.fa&#39;</span><span class="p">,</span> 
+                          <span class="s">&#39;ponAbe2.amb&#39;</span><span class="p">,</span> <span class="s">&#39;ponAbe2.ann&#39;</span><span class="p">,</span> <span class="s">&#39;ponAbe2.pac&#39;</span><span class="p">,</span>
+                          <span class="s">&#39;Masala_R1.fastq.gz&#39;</span><span class="p">,</span> <span class="s">&#39;Masala_R2.fastq.gz&#39;</span><span class="p">],</span>
+       <span class="n">output</span><span class="o">=</span><span class="s">&#39;Masala.sorted.rmdup.bam&#39;</span><span class="p">,</span>
+       <span class="n">cores</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="s">&#39;&#39;&#39;</span>
+
+<span class="s">bwa mem -t 16 ponAbe2.fa Masala_R1.fastq.gz Masala_R2.fastq.gz | </span><span class="se">\</span>
+<span class="s">    samtools view -Shb - &gt; /scratch/$GWF_JOBID/unsorted.bam</span>
+
+<span class="s">samtools sort -o /scratch/$GWF_JOBID/unsorted.bam /scratch/$GWF_JOBID/sort | </span><span class="se">\</span>
+<span class="s">    samtools rmdup -s - Masala.sorted.rmdup.bam</span>
+<span class="s">&#39;&#39;&#39;</span></code></pre></div>
+
+<h2 id="helper-functions-in-the-gwf-module">Helper functions in the gwf module</h2>
+
+<p>When importing the <code>gwf</code> Python module you also import two helper functions that are useful for working with files: <code>glob</code> and <code>shell</code>.  The first identifies files using <a href="http://en.wikipedia.org/wiki/Glob_(programming)">shell expansion</a> and returns a Python list of the matched files while the second executes a shell command and returns the result as a list of tokens.</p>
+
+<p>The two commands below will thus both return a list of the files in current directory:</p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">from</span> <span class="nn">gwf</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="p">(</span><span class="s">&quot;*&quot;</span><span class="p">)</span>
+<span class="n">the_same_files</span> <span class="o">=</span> <span class="n">shell</span><span class="p">(</span><span class="s">&quot;ls&quot;</span><span class="p">)</span></code></pre></div>
+
+<h1 id="templates">Templates</h1>
+
+<h2 id="example-read-mapping-workflow">Example read-mapping workflow</h2>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">from</span> <span class="nn">gwf</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">gwf.bwa</span> <span class="kn">import</span> <span class="n">bwa_index</span><span class="p">,</span> <span class="n">bwa_map</span>
+<span class="kn">from</span> <span class="nn">gwf.samtools</span> <span class="kn">import</span> <span class="n">samtools_sort</span>
+
+<span class="n">target</span><span class="p">(</span><span class="s">&#39;UnZipGenome&#39;</span><span class="p">,</span> <span class="nb">input</span><span class="o">=</span><span class="s">&#39;ponAbe2.fa.gz&#39;</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="s">&#39;ponAbe2.fa&#39;</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="s">&#39;&#39;&#39;</span>
+<span class="s">gzcat ponAbe2.fa.gz &gt; ponAbe2.fa</span>
+<span class="s">&#39;&#39;&#39;</span>
+<span class="n">target</span><span class="p">(</span><span class="s">&#39;IndexGenome&#39;</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="n">bwa_index</span><span class="p">(</span><span class="n">refGenome</span><span class="o">=</span><span class="s">&#39;ponAbe2&#39;</span><span class="p">)</span>
+<span class="n">target</span><span class="p">(</span><span class="s">&#39;MapReads&#39;</span><span class="p">)</span>    <span class="o">&lt;&lt;</span> <span class="n">bwa_map</span><span class="p">(</span><span class="n">refGenome</span><span class="o">=</span><span class="s">&#39;ponAbe2&#39;</span><span class="p">,</span> 
+                                 <span class="n">R1</span><span class="o">=</span><span class="s">&#39;Masala_R1.fastq.gz&#39;</span><span class="p">,</span> 
+                                 <span class="n">R2</span><span class="o">=</span><span class="s">&#39;Masala_R2.fastq.gz&#39;</span><span class="p">,</span> 
+                                 <span class="n">bamfile</span><span class="o">=</span><span class="s">&#39;Masala.unsorted.bam&#39;</span><span class="p">)</span>
+<span class="n">target</span><span class="p">(</span><span class="s">&#39;SortBAM&#39;</span><span class="p">)</span>     <span class="o">&lt;&lt;</span> <span class="n">samtools_sort</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s">&#39;Masala&#39;</span><span class="p">)</span></code></pre></div>
+
+  </article>
+
+</div>
+
+      </div>
+    </div>
+
+    
+      <div class="wrapper_buttons">
+          <a href="https://github.com/mailund/gwf/zipball/master" class="btn">Download as .zip</a>
+          <a href="https://github.com/mailund/gwf/tarball/master" class="btn">Download as .tar.gz</a>
+          <a href="https://github.com/mailund/gwf" class="btn">View on GitHub
+              <span class="icon  icon--github">
+                <svg viewBox="0 0 16 16">
+                  <path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/>
+                </svg>
+              </span></a>
+      </div>
+
+<footer class="site-footer">
+
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">GWF - Grid WorkFlow
+    </h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col  footer-col-1">
+        <ul class="contact-list">
+          <li>GWF - Grid WorkFlow</li>
+          <li><a href="mailto:mailund@birc.au.dk">mailund@birc.au.dk</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col  footer-col-2">
+        <ul class="social-media-list">
+          
+          <li>
+            <a href="https://github.com/mailund">
+              <span class="icon  icon--github">
+                <svg viewBox="0 0 16 16">
+                  <path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/>
+                </svg>
+              </span>
+
+              <span class="username">mailund</span>
+            </a>
+          </li>
+          
+
+          
+          <li>
+            <a href="https://twitter.com/ThomasMailund">
+              <span class="icon  icon--twitter">
+                <svg viewBox="0 0 16 16">
+                  <path fill="#828282" d="M15.969,3.058c-0.586,0.26-1.217,0.436-1.878,0.515c0.675-0.405,1.194-1.045,1.438-1.809
+                  c-0.632,0.375-1.332,0.647-2.076,0.793c-0.596-0.636-1.446-1.033-2.387-1.033c-1.806,0-3.27,1.464-3.27,3.27 c0,0.256,0.029,0.506,0.085,0.745C5.163,5.404,2.753,4.102,1.14,2.124C0.859,2.607,0.698,3.168,0.698,3.767 c0,1.134,0.577,2.135,1.455,2.722C1.616,6.472,1.112,6.325,0.671,6.08c0,0.014,0,0.027,0,0.041c0,1.584,1.127,2.906,2.623,3.206 C3.02,9.402,2.731,9.442,2.433,9.442c-0.211,0-0.416-0.021-0.615-0.059c0.416,1.299,1.624,2.245,3.055,2.271 c-1.119,0.877-2.529,1.4-4.061,1.4c-0.264,0-0.524-0.015-0.78-0.046c1.447,0.928,3.166,1.469,5.013,1.469 c6.015,0,9.304-4.983,9.304-9.304c0-0.142-0.003-0.283-0.009-0.423C14.976,4.29,15.531,3.714,15.969,3.058z"/>
+                </svg>
+              </span>
+
+              <span class="username">ThomasMailund</span>
+            </a>
+          </li>
+          
+        </ul>
+      </div>
+
+      <div class="footer-col  footer-col-3">
+        <p class="text">A small utility for specifying and running computation workflows on computer clusters.
+</p>
+      </div>
+    </div>
+
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>
