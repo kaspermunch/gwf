@@ -1,0 +1,17 @@
+---
+layout: post
+title:  "Version 0.6.0"
+date:   2014-08-20 19:00:00
+categories: gwf update
+---
+
+The latest stable release of GWF -- although still a beta release -- is now 0.6.0.
+
+New features in this version includes:
+
+* Support for SLURM as the grid backend
+* Faster running time when checking status or submitting jobs
+* A much improved status output -- faster and more condenced informatino about the targets
+
+The default backend is still Torque but you can change the default -- either local to a workflow or globally -- using the `gwf-config` script.
+
