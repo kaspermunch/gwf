@@ -12,3 +12,5 @@ example/.scripts/SortBAM
 example/.scripts/UnZipGenome
 *.pyc
 src/gwf.egg-info/
+_site/
+.sass-cache/
