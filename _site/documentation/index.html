@@ -115,9 +115,10 @@
 <span class="s">bwa index -p ponAbe2 -a bwtsw ponAbe2.fa</span>
 <span class="s">&#39;&#39;&#39;</span>
 
-<span class="n">target</span><span class="p">(</span><span class="s">&#39;MapReads&#39;</span><span class="p">,</span> <span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;ponAbe2.fa&#39;</span><span class="p">,</span> 
-                          <span class="s">&#39;ponAbe2.amb&#39;</span><span class="p">,</span> <span class="s">&#39;ponAbe2.ann&#39;</span><span class="p">,</span> <span class="s">&#39;ponAbe2.pac&#39;</span><span class="p">,</span>
-                          <span class="s">&#39;Masala_R1.fastq.gz&#39;</span><span class="p">,</span> <span class="s">&#39;Masala_R2.fastq.gz&#39;</span><span class="p">],</span>
+<span class="n">target</span><span class="p">(</span><span class="s">&#39;MapReads&#39;</span><span class="p">,</span> 
+       <span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;ponAbe2.fa&#39;</span><span class="p">,</span> 
+              <span class="s">&#39;ponAbe2.amb&#39;</span><span class="p">,</span> <span class="s">&#39;ponAbe2.ann&#39;</span><span class="p">,</span> <span class="s">&#39;ponAbe2.pac&#39;</span><span class="p">,</span>
+              <span class="s">&#39;Masala_R1.fastq.gz&#39;</span><span class="p">,</span> <span class="s">&#39;Masala_R2.fastq.gz&#39;</span><span class="p">],</span>
        <span class="n">output</span><span class="o">=</span><span class="s">&#39;Masala.sorted.rmdup.bam&#39;</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="s">&#39;&#39;&#39;</span>
 
 <span class="s">bwa mem -t 16 ponAbe2.fa Masala_R1.fastq.gz Masala_R2.fastq.gz | </span><span class="se">\</span>
@@ -233,27 +234,156 @@
 
 <h2 id="templates-1">Templates</h2>
 
-<p><strong>FIXME</strong></p>
+<p>There is a lot of explicit text substitution going on in the example above, but we can hide that away to some extend using a template mechanism.</p>
+
+<p>Under the hood, it is still just <a href="https://docs.python.org/2/library/string.html#format-string-syntax">format text substitution</a> going on but in many cases we don’t want to clutter up the workflow with this and we can in fact hide it away a bit.</p>
+
+<p>The simplest way to do this is using the <code>template</code> function. This function uses a mix of <code>target</code> and <a href="https://docs.python.org/2/library/string.html#format-string-syntax">format</a> functionality to achive this.</p>
+
+<p>The function takes the same named parameter as the <code>target</code> function – <code>input</code> and <code>output</code> plus the resource options for the grid backend – but you can write template parameters in them using curly brackets like for <a href="https://docs.python.org/2/library/string.html#format-string-syntax">format</a>.</p>
+
+<p>As a first example we can take the <code>IndexGenome</code> from earlier and make a template for it:</p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">bwa_index</span> <span class="o">=</span> <span class="n">template</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="s">&#39;{refGenome}.fa&#39;</span><span class="p">,</span> 
+                     <span class="n">output</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;{refGenome}.amb&#39;</span><span class="p">,</span> 
+                             <span class="s">&#39;{refGenome}.ann&#39;</span><span class="p">,</span> 
+                             <span class="s">&#39;{refGenome}.pac&#39;</span><span class="p">])</span> <span class="o">&lt;&lt;</span> <span class="s">&#39;&#39;&#39;</span>
+
+<span class="s">bwa index -p {refGenome} -a bwtsw {refGenome}.fa</span>
+<span class="s">&#39;&#39;&#39;</span></code></pre></div>
+
+<p>It looks a lot like the target from earlier but has the <em>magic</em> variable <code>{refGenome}</code> in it.</p>
+
+<p>This template specification creates a function, <code>bwa_index</code>, that you can later use to define targets. The curly bracket variable becomes a (named) parameter of this function, so when you use it like</p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">target</span><span class="p">(</span><span class="s">&#39;IndexGenome&#39;</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="n">bwa_index</span><span class="p">(</span><span class="n">refGenome</span><span class="o">=</span><span class="s">&#39;ponAbe2&#39;</span><span class="p">)</span></code></pre></div>
+
+<p>the <code>{refGenome}</code> text in both the named parameters and the shell script specification gets assigned the value you set <code>refGenome</code> to in the call of the function, i.e. “ponAbe2”.</p>
+
+<p>All the parameters plus the shell script is just passed along to the target, so using the template in this way does exactly the same as the <code>IndexGenome</code> target from earlier, just with the shell commands and file names hidden away in the template specification.</p>
+
+<p>Only slightly more complex is the template specification for the read-mapping:</p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">bwa_map</span> <span class="o">=</span> <span class="n">template</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;{R1}&#39;</span><span class="p">,</span> <span class="s">&#39;{R2}&#39;</span><span class="p">,</span> 
+                          <span class="s">&#39;{refGenome}.amb&#39;</span><span class="p">,</span> 
+                          <span class="s">&#39;{refGenome}.ann&#39;</span><span class="p">,</span> 
+                          <span class="s">&#39;{refGenome}.pac&#39;</span><span class="p">],</span>
+                   <span class="n">output</span><span class="o">=</span><span class="s">&#39;{bamfile}&#39;</span><span class="p">,</span>
+                   <span class="n">cores</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="s">&#39;&#39;&#39;</span>
+
+<span class="s">bwa mem -t 16 {refGenome} {R1} {R2} | </span><span class="se">\</span>
+<span class="s">    samtools view -Shb - &gt; /scratch/$GWF_JOBID/unsorted.bam</span>
+
+<span class="s">samtools sort -o /scratch/$GWF_JOBID/unsorted.bam /scratch/$GWF_JOBID/sort | </span><span class="se">\</span>
+<span class="s">    samtools rmdup -s - {bamfile}</span>
+
+<span class="s">&#39;&#39;&#39;</span></code></pre></div>
+
+<p>This template has four curly bracket parameters, <code>R1</code>, <code>R2</code>, <code>refGenome</code>, and <code>bamfile</code> but otherwise works the same way as the <code>bwa_index</code> template. When called to make a target you just need to specify four parameters instead of one, so the <code>MapReads</code> target from earlier would simply be</p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">target</span><span class="p">(</span><span class="s">&#39;MapReads&#39;</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="n">bwa_map</span><span class="p">(</span><span class="n">R1</span><span class="o">=</span><span class="s">&#39;Masala_R1.fastq.gz&#39;</span><span class="p">,</span> <span class="n">R2</span><span class="o">=</span><span class="s">&#39;Masala_R2.fastq.gz&#39;</span><span class="p">,</span>
+                              <span class="n">refGenome</span><span class="o">=</span><span class="s">&#39;ponAbe2&#39;</span><span class="p">,</span> 
+                              <span class="n">bamfile</span><span class="o">=</span><span class="s">&#39;Masala.sorted.rmdup.bam&#39;</span><span class="p">)</span></code></pre></div>
+
+<p>and since the <code>cores</code> parameter is specified in the template this is passed on to the target, ensuring that our use of 16 cores in the <code>bwa</code> shell command matches the number of cores we ask for in the submission to the cluster.</p>
+
+<p>You can now separate the templates from the workflow like this</p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">from</span> <span class="nn">gwf</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="c"># Templates</span>
+<span class="n">unzip</span> <span class="o">=</span> <span class="n">template</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="s">&#39;{refGenome}.fa.gz&#39;</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="s">&#39;{refGenome}.fa&#39;</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="s">&#39;&#39;&#39;</span>
+<span class="s">gzcat {refGenome}.fa.gz &gt; {refGenome}.fa</span>
+<span class="s">&#39;&#39;&#39;</span>
+
+<span class="n">bwa_index</span> <span class="o">=</span> <span class="n">template</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="s">&#39;{refGenome}.fa&#39;</span><span class="p">,</span> 
+                     <span class="n">output</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;{refGenome}.amb&#39;</span><span class="p">,</span> 
+                             <span class="s">&#39;{refGenome}.ann&#39;</span><span class="p">,</span> 
+                             <span class="s">&#39;{refGenome}.pac&#39;</span><span class="p">])</span> <span class="o">&lt;&lt;</span> <span class="s">&#39;&#39;&#39;</span>
+
+<span class="s">bwa index -p {refGenome} -a bwtsw {refGenome}.fa</span>
+<span class="s">&#39;&#39;&#39;</span>
+
+<span class="n">bwa_map</span> <span class="o">=</span> <span class="n">template</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;{R1}&#39;</span><span class="p">,</span> <span class="s">&#39;{R2}&#39;</span><span class="p">,</span> 
+                          <span class="s">&#39;{refGenome}.amb&#39;</span><span class="p">,</span> 
+                          <span class="s">&#39;{refGenome}.ann&#39;</span><span class="p">,</span> 
+                          <span class="s">&#39;{refGenome}.pac&#39;</span><span class="p">],</span>
+                   <span class="n">output</span><span class="o">=</span><span class="s">&#39;{bamfile}&#39;</span><span class="p">,</span>
+                   <span class="n">cores</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="s">&#39;&#39;&#39;</span>
+
+<span class="s">bwa mem -t 16 {refGenome} {R1} {R2} | </span><span class="se">\</span>
+<span class="s">    samtools view -Shb - &gt; /scratch/$GWF_JOBID/unsorted.bam</span>
+
+<span class="s">samtools sort -o /scratch/$GWF_JOBID/unsorted.bam /scratch/$GWF_JOBID/sort | </span><span class="se">\</span>
+<span class="s">    samtools rmdup -s - {bamfile}</span>
+
+<span class="s">&#39;&#39;&#39;</span>
+
+<span class="c"># Workflow</span>
+<span class="n">target</span><span class="p">(</span><span class="s">&#39;UnZipGenome&#39;</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="n">unzip</span><span class="p">(</span><span class="n">refGenome</span><span class="o">=</span><span class="s">&#39;ponAbe2&#39;</span><span class="p">)</span>
+<span class="n">target</span><span class="p">(</span><span class="s">&#39;IndexGenome&#39;</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="n">bwa_index</span><span class="p">(</span><span class="n">refGenome</span><span class="o">=</span><span class="s">&#39;ponAbe2&#39;</span><span class="p">)</span>
+<span class="n">target</span><span class="p">(</span><span class="s">&#39;MapReads&#39;</span><span class="p">)</span>    <span class="o">&lt;&lt;</span> <span class="n">bwa_map</span><span class="p">(</span><span class="n">R1</span><span class="o">=</span><span class="s">&#39;Masala_R1.fastq.gz&#39;</span><span class="p">,</span> 
+                                 <span class="n">R2</span><span class="o">=</span><span class="s">&#39;Masala_R2.fastq.gz&#39;</span><span class="p">,</span>
+                                 <span class="n">refGenome</span><span class="o">=</span><span class="s">&#39;ponAbe2&#39;</span><span class="p">,</span> 
+                                 <span class="n">bamfile</span><span class="o">=</span><span class="s">&#39;Masala.sorted.rmdup.bam&#39;</span><span class="p">)</span></code></pre></div>
+
+<p>Better yet, put the templates in a separate file and use Python’s module mechanism.</p>
+
+<p>If you put the templates in a file <code>templates.py</code> next to the <code>workflow.py</code> file</p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">from</span> <span class="nn">gwf</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="c"># Templates</span>
+<span class="n">unzip</span> <span class="o">=</span> <span class="n">template</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="s">&#39;{refGenome}.fa.gz&#39;</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="s">&#39;{refGenome}.fa&#39;</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="s">&#39;&#39;&#39;</span>
+<span class="s">gzcat {refGenome}.fa.gz &gt; {refGenome}.fa</span>
+<span class="s">&#39;&#39;&#39;</span>
+
+<span class="n">bwa_index</span> <span class="o">=</span> <span class="n">template</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="s">&#39;{refGenome}.fa&#39;</span><span class="p">,</span> 
+                     <span class="n">output</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;{refGenome}.amb&#39;</span><span class="p">,</span> 
+                             <span class="s">&#39;{refGenome}.ann&#39;</span><span class="p">,</span> 
+                             <span class="s">&#39;{refGenome}.pac&#39;</span><span class="p">])</span> <span class="o">&lt;&lt;</span> <span class="s">&#39;&#39;&#39;</span>
+
+<span class="s">bwa index -p {refGenome} -a bwtsw {refGenome}.fa</span>
+<span class="s">&#39;&#39;&#39;</span>
+
+<span class="n">bwa_map</span> <span class="o">=</span> <span class="n">template</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;{R1}&#39;</span><span class="p">,</span> <span class="s">&#39;{R2}&#39;</span><span class="p">,</span> 
+                          <span class="s">&#39;{refGenome}.amb&#39;</span><span class="p">,</span> 
+                          <span class="s">&#39;{refGenome}.ann&#39;</span><span class="p">,</span> 
+                          <span class="s">&#39;{refGenome}.pac&#39;</span><span class="p">],</span>
+                   <span class="n">output</span><span class="o">=</span><span class="s">&#39;{bamfile}&#39;</span><span class="p">,</span>
+                   <span class="n">cores</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="s">&#39;&#39;&#39;</span>
+
+<span class="s">bwa mem -t 16 {refGenome} {R1} {R2} | </span><span class="se">\</span>
+<span class="s">    samtools view -Shb - &gt; /scratch/$GWF_JOBID/unsorted.bam</span>
+
+<span class="s">samtools sort -o /scratch/$GWF_JOBID/unsorted.bam /scratch/$GWF_JOBID/sort | </span><span class="se">\</span>
+<span class="s">    samtools rmdup -s - {bamfile}</span>
+
+<span class="s">&#39;&#39;&#39;</span></code></pre></div>
+
+<p>your workflow can look as simple as</p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">from</span> <span class="nn">gwf</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">tempates</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">target</span><span class="p">(</span><span class="s">&#39;UnZipGenome&#39;</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="n">unzip</span><span class="p">(</span><span class="n">refGenome</span><span class="o">=</span><span class="s">&#39;ponAbe2&#39;</span><span class="p">)</span>
+<span class="n">target</span><span class="p">(</span><span class="s">&#39;IndexGenome&#39;</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="n">bwa_index</span><span class="p">(</span><span class="n">refGenome</span><span class="o">=</span><span class="s">&#39;ponAbe2&#39;</span><span class="p">)</span>
+<span class="n">target</span><span class="p">(</span><span class="s">&#39;MapReads&#39;</span><span class="p">)</span>    <span class="o">&lt;&lt;</span> <span class="n">bwa_map</span><span class="p">(</span><span class="n">R1</span><span class="o">=</span><span class="s">&#39;Masala_R1.fastq.gz&#39;</span><span class="p">,</span> 
+                                 <span class="n">R2</span><span class="o">=</span><span class="s">&#39;Masala_R2.fastq.gz&#39;</span><span class="p">,</span>
+                                 <span class="n">refGenome</span><span class="o">=</span><span class="s">&#39;ponAbe2&#39;</span><span class="p">,</span> 
+                                 <span class="n">bamfile</span><span class="o">=</span><span class="s">&#39;Masala.sorted.rmdup.bam&#39;</span><span class="p">)</span></code></pre></div>
+
+<p>By putting your templates in python modules like this you can build libraries of useful commands that you can reuse in your workflows.</p>
+
+<h2 id="overwriting-options-in-targets">Overwriting options in targets</h2>
+
+<p>The resource options you specify in templates can be overwritten by explicitly setting them in targets, so if for example you have a template <code>my_cool_template</code> that sets the memory requirement to “2g” but on one particular set of data “4g” is needed you can overwrite the template default by explicitly setting the <code>memory</code> option in the target like this:</p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">target</span><span class="p">(</span><span class="s">&#39;myHeavyTarget&#39;</span><span class="p">,</span> <span class="n">memory</span><span class="o">=</span><span class="s">&#39;4g&#39;</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="n">my_cool_template</span><span class="p">()</span></code></pre></div>
 
 <h2 id="using-functions-to-make-templates">Using functions to make templates</h2>
 
 <p><strong>FIXME</strong></p>
-
-<h2 id="example-read-mapping-workflow">Example read-mapping workflow</h2>
-
-<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">from</span> <span class="nn">gwf</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="kn">from</span> <span class="nn">gwf.bwa</span> <span class="kn">import</span> <span class="n">bwa_index</span><span class="p">,</span> <span class="n">bwa_map</span>
-<span class="kn">from</span> <span class="nn">gwf.samtools</span> <span class="kn">import</span> <span class="n">samtools_sort</span>
-
-<span class="n">target</span><span class="p">(</span><span class="s">&#39;UnZipGenome&#39;</span><span class="p">,</span> <span class="nb">input</span><span class="o">=</span><span class="s">&#39;ponAbe2.fa.gz&#39;</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="s">&#39;ponAbe2.fa&#39;</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="s">&#39;&#39;&#39;</span>
-<span class="s">gzcat ponAbe2.fa.gz &gt; ponAbe2.fa</span>
-<span class="s">&#39;&#39;&#39;</span>
-<span class="n">target</span><span class="p">(</span><span class="s">&#39;IndexGenome&#39;</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="n">bwa_index</span><span class="p">(</span><span class="n">refGenome</span><span class="o">=</span><span class="s">&#39;ponAbe2&#39;</span><span class="p">)</span>
-<span class="n">target</span><span class="p">(</span><span class="s">&#39;MapReads&#39;</span><span class="p">)</span>    <span class="o">&lt;&lt;</span> <span class="n">bwa_map</span><span class="p">(</span><span class="n">refGenome</span><span class="o">=</span><span class="s">&#39;ponAbe2&#39;</span><span class="p">,</span> 
-                                 <span class="n">R1</span><span class="o">=</span><span class="s">&#39;Masala_R1.fastq.gz&#39;</span><span class="p">,</span> 
-                                 <span class="n">R2</span><span class="o">=</span><span class="s">&#39;Masala_R2.fastq.gz&#39;</span><span class="p">,</span> 
-                                 <span class="n">bamfile</span><span class="o">=</span><span class="s">&#39;Masala.unsorted.bam&#39;</span><span class="p">)</span>
-<span class="n">target</span><span class="p">(</span><span class="s">&#39;SortBAM&#39;</span><span class="p">)</span>     <span class="o">&lt;&lt;</span> <span class="n">samtools_sort</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s">&#39;Masala&#39;</span><span class="p">)</span></code></pre></div>
 
 
   </article>

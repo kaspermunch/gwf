@@ -56,9 +56,10 @@ target('IndexGenome', input='ponAbe2.fa',
 bwa index -p ponAbe2 -a bwtsw ponAbe2.fa
 '''
 
-target('MapReads', input=['ponAbe2.fa', 
-                          'ponAbe2.amb', 'ponAbe2.ann', 'ponAbe2.pac',
-                          'Masala_R1.fastq.gz', 'Masala_R2.fastq.gz'],
+target('MapReads', 
+       input=['ponAbe2.fa', 
+              'ponAbe2.amb', 'ponAbe2.ann', 'ponAbe2.pac',
+              'Masala_R1.fastq.gz', 'Masala_R2.fastq.gz'],
        output='Masala.sorted.rmdup.bam') << '''
 
 bwa mem -t 16 ponAbe2.fa Masala_R1.fastq.gz Masala_R2.fastq.gz | \
@@ -197,36 +198,182 @@ In this case with named parameters to make the subsitutions more explicit.
 
 
 
-
-
 Templates
 ---------
 
-**FIXME**
+There is a lot of explicit text substitution going on in the example above, but we can hide that away to some extend using a template mechanism.
+
+Under the hood, it is still just [format text substitution][format] going on but in many cases we don't want to clutter up the workflow with this and we can in fact hide it away a bit.
+
+The simplest way to do this is using the `template` function. This function uses a mix of `target` and [format][format] functionality to achive this.
+
+The function takes the same named parameter as the `target` function -- `input` and `output` plus the resource options for the grid backend -- but you can write template parameters in them using curly brackets like for [format][format].
+
+As a first example we can take the `IndexGenome` from earlier and make a template for it:
+
+{% highlight python %}
+bwa_index = template(input='{refGenome}.fa', 
+                     output=['{refGenome}.amb', 
+                             '{refGenome}.ann', 
+                             '{refGenome}.pac']) << '''
+
+bwa index -p {refGenome} -a bwtsw {refGenome}.fa
+'''
+{% endhighlight %}
+
+It looks a lot like the target from earlier but has the *magic* variable `{refGenome}` in it.
+
+This template specification creates a function, `bwa_index`, that you can later use to define targets. The curly bracket variable becomes a (named) parameter of this function, so when you use it like
+
+{% highlight python %}
+target('IndexGenome') << bwa_index(refGenome='ponAbe2')
+{% endhighlight %}
+
+the `{refGenome}` text in both the named parameters and the shell script specification gets assigned the value you set `refGenome` to in the call of the function, i.e. "ponAbe2".
+
+All the parameters plus the shell script is just passed along to the target, so using the template in this way does exactly the same as the `IndexGenome` target from earlier, just with the shell commands and file names hidden away in the template specification.
+
+Only slightly more complex is the template specification for the read-mapping:
+
+{% highlight python %}
+bwa_map = template(input=['{R1}', '{R2}', 
+                          '{refGenome}.amb', 
+                          '{refGenome}.ann', 
+                          '{refGenome}.pac'],
+                   output='{bamfile}',
+                   cores=16) << '''
+
+bwa mem -t 16 {refGenome} {R1} {R2} | \
+    samtools view -Shb - > /scratch/$GWF_JOBID/unsorted.bam
+
+samtools sort -o /scratch/$GWF_JOBID/unsorted.bam /scratch/$GWF_JOBID/sort | \
+    samtools rmdup -s - {bamfile}
+
+'''
+{% endhighlight %}
+
+This template has four curly bracket parameters, `R1`, `R2`, `refGenome`, and `bamfile` but otherwise works the same way as the `bwa_index` template. When called to make a target you just need to specify four parameters instead of one, so the `MapReads` target from earlier would simply be
+
+{% highlight python %}
+target('MapReads') << bwa_map(R1='Masala_R1.fastq.gz', R2='Masala_R2.fastq.gz',
+                              refGenome='ponAbe2', 
+                              bamfile='Masala.sorted.rmdup.bam')
+{% endhighlight %}
+
+and since the `cores` parameter is specified in the template this is passed on to the target, ensuring that our use of 16 cores in the `bwa` shell command matches the number of cores we ask for in the submission to the cluster.
+
+You can now separate the templates from the workflow like this
+
+{% highlight python %}
+from gwf import *
+
+# Templates
+unzip = template(input='{refGenome}.fa.gz', output='{refGenome}.fa') << '''
+gzcat {refGenome}.fa.gz > {refGenome}.fa
+'''
+
+bwa_index = template(input='{refGenome}.fa', 
+                     output=['{refGenome}.amb', 
+                             '{refGenome}.ann', 
+                             '{refGenome}.pac']) << '''
+
+bwa index -p {refGenome} -a bwtsw {refGenome}.fa
+'''
+
+bwa_map = template(input=['{R1}', '{R2}', 
+                          '{refGenome}.amb', 
+                          '{refGenome}.ann', 
+                          '{refGenome}.pac'],
+                   output='{bamfile}',
+                   cores=16) << '''
+
+bwa mem -t 16 {refGenome} {R1} {R2} | \
+    samtools view -Shb - > /scratch/$GWF_JOBID/unsorted.bam
+
+samtools sort -o /scratch/$GWF_JOBID/unsorted.bam /scratch/$GWF_JOBID/sort | \
+    samtools rmdup -s - {bamfile}
+
+'''
+
+# Workflow
+target('UnZipGenome') << unzip(refGenome='ponAbe2')
+target('IndexGenome') << bwa_index(refGenome='ponAbe2')
+target('MapReads')    << bwa_map(R1='Masala_R1.fastq.gz', 
+                                 R2='Masala_R2.fastq.gz',
+                                 refGenome='ponAbe2', 
+                                 bamfile='Masala.sorted.rmdup.bam')
+{% endhighlight %}
+
+Better yet, put the templates in a separate file and use Python's module mechanism.
+
+If you put the templates in a file `templates.py` next to the `workflow.py` file
+
+{% highlight python %}
+from gwf import *
+
+# Templates
+unzip = template(input='{refGenome}.fa.gz', output='{refGenome}.fa') << '''
+gzcat {refGenome}.fa.gz > {refGenome}.fa
+'''
+
+bwa_index = template(input='{refGenome}.fa', 
+                     output=['{refGenome}.amb', 
+                             '{refGenome}.ann', 
+                             '{refGenome}.pac']) << '''
+
+bwa index -p {refGenome} -a bwtsw {refGenome}.fa
+'''
+
+bwa_map = template(input=['{R1}', '{R2}', 
+                          '{refGenome}.amb', 
+                          '{refGenome}.ann', 
+                          '{refGenome}.pac'],
+                   output='{bamfile}',
+                   cores=16) << '''
+
+bwa mem -t 16 {refGenome} {R1} {R2} | \
+    samtools view -Shb - > /scratch/$GWF_JOBID/unsorted.bam
+
+samtools sort -o /scratch/$GWF_JOBID/unsorted.bam /scratch/$GWF_JOBID/sort | \
+    samtools rmdup -s - {bamfile}
+
+'''
+{% endhighlight %}
+
+your workflow can look as simple as
+
+{% highlight python %}
+from gwf import *
+from tempates import *
+
+target('UnZipGenome') << unzip(refGenome='ponAbe2')
+target('IndexGenome') << bwa_index(refGenome='ponAbe2')
+target('MapReads')    << bwa_map(R1='Masala_R1.fastq.gz', 
+                                 R2='Masala_R2.fastq.gz',
+                                 refGenome='ponAbe2', 
+                                 bamfile='Masala.sorted.rmdup.bam')
+{% endhighlight %}
+
+
+By putting your templates in python modules like this you can build libraries of useful commands that you can reuse in your workflows.
+
+Overwriting options in targets
+------------------------------
+
+The resource options you specify in templates can be overwritten by explicitly setting them in targets, so if for example you have a template `my_cool_template` that sets the memory requirement to "2g" but on one particular set of data "4g" is needed you can overwrite the template default by explicitly setting the `memory` option in the target like this:
+
+{% highlight python %}
+target('myHeavyTarget', memory='4g') << my_cool_template()
+{% endhighlight %}
+
+
 
 Using functions to make templates
 ---------------------------------
 
 **FIXME**
 
-Example read-mapping workflow
------------------------------
 
-{% highlight python %}
-from gwf import *
-from gwf.bwa import bwa_index, bwa_map
-from gwf.samtools import samtools_sort
-
-target('UnZipGenome', input='ponAbe2.fa.gz', output='ponAbe2.fa') << '''
-gzcat ponAbe2.fa.gz > ponAbe2.fa
-'''
-target('IndexGenome') << bwa_index(refGenome='ponAbe2')
-target('MapReads')    << bwa_map(refGenome='ponAbe2', 
-                                 R1='Masala_R1.fastq.gz', 
-                                 R2='Masala_R2.fastq.gz', 
-                                 bamfile='Masala.unsorted.bam')
-target('SortBAM')     << samtools_sort(name='Masala')
-{% endhighlight %}
 
 
 
