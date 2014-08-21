@@ -14,3 +14,5 @@ example/.scripts/UnZipGenome
 src/gwf.egg-info/
 _site/
 .sass-cache/
+examples/readmapping-and-merging/.scripts/UnZipGenome
+examples/readmapping/.scripts/UnZipGenome
