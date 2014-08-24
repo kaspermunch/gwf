@@ -42,3 +42,6 @@ will be run again whenever the input file `foo` changes.
 
 The memorization is based on the byte code of the function and the input files you specify as options. It does not keep track of the closure of the function so **do not** use global variables with memorization!
 
+The memorization isn't free, so you should only use it if the function you are calling really is time consuming. A simple example like above, where the function just reads in the content of a file, would not be faster with memorization since the data would still be read from disk, just a memorisation database instead of the "foo" file.
+
+You should really only use this feature if you are noticing that some of your workflow code is running slow and that this can be alleviated by remembering results from time to time.

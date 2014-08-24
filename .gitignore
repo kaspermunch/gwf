@@ -16,3 +16,8 @@ _site/
 .sass-cache/
 examples/readmapping-and-merging/.scripts/UnZipGenome
 examples/readmapping/.scripts/UnZipGenome
+test.py
+.memory/bar.db
+.memory/foo_n.db
+.memory/my_function.db
+.memory/qux.db
