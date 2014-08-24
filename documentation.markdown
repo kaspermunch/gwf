@@ -371,7 +371,44 @@ target('myHeavyTarget', memory='4g') << my_cool_template()
 Using functions to make templates
 ---------------------------------
 
-**FIXME**
+The `template()` function is the simplest way to construct templates when all you need is simple text substitution but it doesn't provide for ways of manipulating the template input before creating a target.
+
+When this is needed, you need to use a Python function instead.
+
+Any function that returns a pair as its return output consisting of a dictionary and a string can be used as a template.
+
+Consider the function below that builds a dictionary `options` and a shell specification `shell_spec` as its return values.
+
+{% highlight python %}
+def merge(individual, inputfiles):
+  outputfile = '{}.bam'.format(individual)
+  options = {'input': inputfiles, 'output': outputfile}
+  shell_spec = '''
+
+  samtools merge - {inputbams} | samtools rmdup -s - {name}.bam
+
+  '''.format(inputbams = ' '.join(inputfiles), name=individual)
+
+  return (options, shell_spec)
+{% endhighlight %}
+
+It takes input files as a list but needs both to preserve this as a list for the `input` option and transform them into a string with the input names space separated. This is not possible with the `template()` function where you cannot do the string join so a function is needed.
+
+Whenever a `target()` gets a pair consisting of a `dict` and a string through the `<<` operator it will know how to interpret this, and this is in fact also how the `template()` mechanism work.
+
+You can even do this explicitly
+
+{% highlight python %}
+target('example') << ({'input': 'foo', 'output': 'bar'}, 'cat foo > bar')
+{% endhighlight %}
+
+although this is never necessary since it would work exactly as the simpler mechanism
+
+{% highlight python %}
+target('example', input='foo', output='bar') << 'cat foo > bar'
+{% endhighlight %}
+
+We can see our function template in action in the complete workflow below:
 
 {% highlight python %}
 from gwf import *
@@ -404,16 +441,14 @@ samtools sort -o /scratch/$GWF_JOBID/unsorted.bam /scratch/$GWF_JOBID/sort | \
 
 '''
 
-def merge(individual):
-  inputfiles = ['{}_{}.sorted.rmdup.bam'.format(individual, i) 
-                for i in range(1,3)]
+def merge(individual, inputfiles):
   outputfile = '{}.bam'.format(individual)
+  options = {'input': inputfiles, 'output': outputfile}
   shell_spec = '''
 
   samtools merge - {inputbams} | samtools rmdup -s - {name}.bam
 
   '''.format(inputbams = ' '.join(inputfiles), name=individual)
-  options = {'input': inputfiles, 'output': outputfile}
 
   return (options, shell_spec)
 
@@ -433,7 +468,7 @@ for i in range(1,3):
         R2='Masala_{}_R2.fastq.gz'.format(i),
         bamfile='Masala_{}.sorted.rmdup.bam'.format(i))
 
-target('Merge') << merge(individual='Masala')
+target('Merge') << merge(individual='Masala', inputfiles=bamfiles)
 {% endhighlight %}
 
 
