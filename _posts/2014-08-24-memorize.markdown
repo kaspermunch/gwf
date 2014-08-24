@@ -1,0 +1,44 @@
+---
+layout: post
+title:  "Memorizing function results"
+date:   2014-08-24 12:26:00
+categories: gwf update
+---
+
+In the development branch I have just implemented a new feature that lets you remember the results of function calls between calls to `gwf`.
+
+Of course, you aren't really supposed to do heavy computations in the workflows -- that should be put in targets and run on the computing grid -- but sometimes you do need to put *some* computation there. For example when the structure of the workflow depends on input data, such as the number of targets that can depend on the amount of data and how it is distributed into jobs. If you attempt to deal with this through a target the workflow will be changing before and after that target is run. If you are lucky this just means you have to submit twice to get everything done, but it really could fail in any kinds of ways.
+
+Anyway, if you *do* need to run some computations when running the workflow file, at least you should do it as little as possible, and that is what the new feature is about.
+
+The new feature is a decorator, `@memorize()`, that you wrap around your function like this:
+
+{% highlight python %}
+from gwf import *
+
+@memorize()
+def foo(n):
+    print n
+    return n*n
+{% endhighlight %}
+
+You can call the function `foo(n)` as any other function after this, but it is only evaluated when the result isn't already remembered. So when you call it with a new `n` it will be evaluated, but the result will be remembered, and the next time you call it with the same value you will just get the remembered value.
+
+This works across calls to the workflow, so a memorized function will not be called a second time you run your workflow if its results are already remembered.
+
+It will, however, be run again if you change the source code of the function. The function code is remembered and if it changes the memory for that function is considered out of date.
+
+The decorator takes options, so you do need to put the parenthesis there. Right now it only cares about one option, though. The `input` option.
+
+The `input` option is used to specify that the function depends on an input file -- similar to how targets do -- and that it needs to be run again if the input file changes.  So
+
+{% highlight python %}
+@memorize(input='foo')
+def bar():
+    return open('foo').read()
+{% endhighlight %}
+
+will be run again whenever the input file `foo` changes.
+
+The memorization is based on the byte code of the function and the input files you specify as options. It does not keep track of the closure of the function so **do not** use global variables with memorization!
+
