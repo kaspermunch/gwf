@@ -4,7 +4,7 @@ title: Documentation
 permalink: /documentation/
 ---
 
-Using GWF involves specifying a workflow in one or more files and using the `gwf` script to submit jobs in the workflow to the computer cluser.
+Using GWF involves specifying a workflow in one or more files and using the `gwf` script to submit jobs in the workflow to the computer cluster.
 
 Workflows are specified in Python using a special function, `target()`, that specifies a job to be run. Targets depend on zero or more input files and produce zero or more output files. If any input file is younger than any output file then the target is assumed to be out of date and `gwf` will recognize this.
 
@@ -71,7 +71,7 @@ samtools sort -o /scratch/$GWF_JOBID/unsorted.bam /scratch/$GWF_JOBID/sort | \
 
 {% endhighlight %}
 
-This workflow has three targets: `UnZipGenome`, `IndexGenome`, and `MapReads`. The output file from `UnZipGenome`, `ponAbe2.fa`, is used as the input for `IndexGenome` that in turn produces three index files as output, `ponAbe2.amb`, `ponAbe2.ann`, and `ponAbe2.pac`. Both the FASTA file and the three index files are input files to the `MapReads` target in addition to two FASTQ files. The `MapReads` target executes two shell commands -- any number is allows in a target specification -- to produce the final output.
+This workflow has three targets: `UnZipGenome`, `IndexGenome`, and `MapReads`. The output file from `UnZipGenome`, `ponAbe2.fa`, is used as the input for `IndexGenome` that in turn produces three index files as output, `ponAbe2.amb`, `ponAbe2.ann`, and `ponAbe2.pac`. Both the FASTA file and the three index files are input files to the `MapReads` target in addition to two FASTQ files. The `MapReads` target executes two shell commands -- any number is allowed in a target specification -- to produce the final output.
 
 In this workflow, `UnZipGenome` and `IndexGenome` both have other targets depending on them, so `MapReads` is the only terminal target and `gwf --status` would only show the progress in computing the final output file.
 
@@ -137,7 +137,7 @@ from gwf import *
 R1files = ['Masala_1_R1.fastq.gz', 'Masala_2_R1.fastq.gz']
 R2files = ['Masala_1_R2.fastq.gz', 'Masala_2_R2.fastq.gz']
 
-for i, (r1, r2) in enumerate(zip(R1files)):
+for i, (r1, r2) in enumerate(zip(R1files, R2files)):
   target('MapRead_{}'.format(i+1),
          input=['ponAbe2.fa', 'ponAbe2.amb', 'ponAbe2.ann', 'ponAbe2.pac',
                 r1, r2],
@@ -161,7 +161,7 @@ When there are many such files, we can build the lists using functions like `glo
 Using the Python function `zip` we match them up as pairs and combined with `enumerate` we get each pair together with a number. Here it will be 0 and 1 since those are the numbers `enumerate` will give. So the line
 
 {% highlight python %}
-for i, (r1, r2) in enumerate(zip(R1files)):
+for i, (r1, r2) in enumerate(zip(R1files, R2files)):
 {% endhighlight %}
 
 will loop over the pairs and give each a number.
